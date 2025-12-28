@@ -13,5 +13,5 @@ fn main() {
     };
 
     let program = read_to_string(path).expect("Error reading file.");
-    println!("{}\n{}", program.len(), program);
+    
 }
