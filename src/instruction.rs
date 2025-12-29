@@ -76,7 +76,7 @@ pub enum Operation {
     CMP,
     PUSH,
     POP,
-    SYS,
+    IMM,
     CALL,
     RET,
     HLT,
@@ -114,7 +114,7 @@ impl Operation {
             0x036 => Self::PUSH,
             0x037 => Self::POP,
 
-            0x038 => Self::SYS,
+            0x038 => Self::IMM,
             0x039 => Self::CALL,
             0x03A => Self::RET,
             0x03B => Self::HLT,
