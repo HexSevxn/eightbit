@@ -4,6 +4,8 @@ use std::fs::read_to_string;
 pub mod instruction;
 pub mod interpreter;
 
+use interpreter::*;
+
 fn main() {
     let args: Vec<String> = env::args().collect();
 
@@ -13,5 +15,5 @@ fn main() {
     };
 
     let program = read_to_string(path).expect("Error reading file.");
-    
+    parse_program(program);
 }
