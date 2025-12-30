@@ -9,44 +9,44 @@ registers start with 0x00N (BYTE && 0000_1111 > 0)
 #[derive(Clone, Debug)]
 pub enum Instruction {
     //BASIC
-    NOP,                  // 0x020 / 32 -> NOP -> NO OPERATION
-    DEF(String, Vec<u8>), // 0x021 / 33 -> DEF NAME ARGS -> DEFINES A NAME TO REPRESENT A COLLECTION OF BYTES
-    MOV(u8, u8),          // 0x022 / 34 -> MOV SRC DEST -> MOVES SOURCE TO DESTINATION
+    NOP,                   // 0x020 / 32 -> NOP -> NO OPERATION
+    DEF(String, Vec<u16>), // 0x021 / 33 -> DEF NAME ARGS -> DEFINES A NAME TO REPRESENT A COLLECTION OF BYTES
+    MOV(u16, u16),         // 0x022 / 34 -> MOV SRC DEST -> MOVES SOURCE TO DESTINATION
 
     // MATH
-    ADD(u8, u8), // 0x023 / 35 -> ADD SRC DEST -> ADDS SOURCE TO DESTINATION
-    SUB(u8, u8), // 0x024 / 36 -> SUB SRC DEST -> SUBTRACTS SOURCE FROM DESTINATION
-    INC(u8),     // 0x025 / 37 -> INC DEST -> INCREMENTS DESTINATION
-    DEC(u8),     // 0x026 / 38 -> DEC DEST -> DECREMENTS DESTINATION
-    MUL(u8, u8), // 0x027 / 39 -> MUL SRC DEST -> MULTIPLIES DEST BY SOURCE
-    DIV(u8, u8), // 0x028 / 40 -> DIV SRC DEST -> DIVIDES DEST BY SOURCE (INTEGER DIVISION)
-    MOD(u8, u8), // 0x029 / 41 -> MOD SRC DEST -> DESTINATION SET TO MODULUS OF DEST BY SRC
+    ADD(u16, u16), // 0x023 / 35 -> ADD SRC DEST -> ADDS SOURCE TO DESTINATION
+    SUB(u16, u16), // 0x024 / 36 -> SUB SRC DEST -> SUBTRACTS SOURCE FROM DESTINATION
+    INC(u16),      // 0x025 / 37 -> INC DEST -> INCREMENTS DESTINATION
+    DEC(u16),      // 0x026 / 38 -> DEC DEST -> DECREMENTS DESTINATION
+    MUL(u16, u16), // 0x027 / 39 -> MUL SRC DEST -> MULTIPLIES DEST BY SOURCE
+    DIV(u16, u16), // 0x028 / 40 -> DIV SRC DEST -> DIVIDES DEST BY SOURCE (INTEGER DIVISION)
+    MOD(u16, u16), // 0x029 / 41 -> MOD SRC DEST -> DESTINATION SET TO MODULUS OF DEST BY SRC
 
     //BINARY
-    AND(u8, u8), // 0x02A / 42 -> AND SRC DEST -> DEST = SRC && DEST
-    OR(u8, u8),  // 0x02B / 43 -> OR SRC DEST -> DEST = SRC || DEST
-    XOR(u8, u8), // 0x02C / 44 -> XOR SRC DEST -> DEST = SRC ^ DEST
-    NOT(u8),     // 0x02D / 45 -> NOT SRC DEST -> DEST = !DEST
-    SHL(u8, u8), // 0x02E / 46 -> SHL ARG TARGET -> SHIFTS LEFT TARGET BY ARG
-    SHR(u8, u8), // 0x02F / 47 -> SHR ARG TARGET -> SHIFTS RIGHT TARGET BY ARG
+    AND(u16, u16), // 0x02A / 42 -> AND SRC DEST -> DEST = SRC && DEST
+    OR(u16, u16),  // 0x02B / 43 -> OR SRC DEST -> DEST = SRC || DEST
+    XOR(u16, u16), // 0x02C / 44 -> XOR SRC DEST -> DEST = SRC ^ DEST
+    NOT(u16),      // 0x02D / 45 -> NOT SRC DEST -> DEST = !DEST
+    SHL(u16, u16), // 0x02E / 46 -> SHL ARG TARGET -> SHIFTS LEFT TARGET BY ARG
+    SHR(u16, u16), // 0x02F / 47 -> SHR ARG TARGET -> SHIFTS RIGHT TARGET BY ARG
 
     // LOGICAL
-    JMP(u8),         // 0x030 / 48 -> ADDRESS -> JUMPS TO ADDRESS
-    JG(u16, u8, u8), // 0x031 / 49 -> JMP ADDRESS ARG1 ARG2 -> JUMPS TO ADDRESS IF ARG1 IS GREATER THAN ARG2
-    JL(u16, u8, u8), // 0x032 / 50 -> JMP ADDRESS ARG1 ARG2 -> JUMPS TO ADDRESS IF ARG1 IS LESS THAN ARG2
-    JZ(u16, u8, u8), // 0x033 / 51 -> JMP ADDRESS ARG -> JUMPS TO ADDRESS IF ARG IS EQUAL TO ZERO
-    JNZ(u16, u8), // 0x034 / 52 -> JMP ADDRESS ARG -> JUMPS TO ADDRESS IF ARG IS NOT EQUAL TO ZERO
-    CMP(u8, u8), // 0x035 / 53 -> CMP ARG1 ARG2 -> SETS CARRY FLAG TO 1 IF ARG1 and ARG2 ARE EQUAL, SETS TO ZERO OTHERWISE
+    JMP(u16),          // 0x030 / 48 -> ADDRESS -> JUMPS TO ADDRESS
+    JG(u16, u16, u16), // 0x031 / 49 -> JMP ADDRESS ARG1 ARG2 -> JUMPS TO ADDRESS IF ARG1 IS GREATER THAN ARG2
+    JL(u16, u16, u16), // 0x032 / 50 -> JMP ADDRESS ARG1 ARG2 -> JUMPS TO ADDRESS IF ARG1 IS LESS THAN ARG2
+    JZ(u16, u16, u16), // 0x033 / 51 -> JMP ADDRESS ARG -> JUMPS TO ADDRESS IF ARG IS EQUAL TO ZERO
+    JNZ(u16, u16), // 0x034 / 52 -> JMP ADDRESS ARG -> JUMPS TO ADDRESS IF ARG IS NOT EQUAL TO ZERO
+    CMP(u16, u16), // 0x035 / 53 -> CMP ARG1 ARG2 -> SETS CARRY FLAG TO 1 IF ARG1 and ARG2 ARE EQUAL, SETS TO ZERO OTHERWISE
 
     //STACK
-    PUSH(u8), // 0x036 / 54 -> PUSH SRC -> PUSHES SRC ONTO STACK
-    POP(u8),  // 0x037 / 55 -> POP DEST -> POPS STACK INTO DEST
+    PUSH(u16), // 0x036 / 54 -> PUSH SRC -> PUSHES SRC ONTO STACK
+    POP(u16),  // 0x037 / 55 -> POP DEST -> POPS STACK INTO DEST
 
     //PROGRAM
-    IMM(u8, u8),  // 0x038 / 56 -> IMM ARG DEST -> SETS DEST TO ARG
-    CALL(String), // 0x039 / 57 -> CALL NAME -> CALLS SUBROUTINE "NAME"
+    IMM(u16, u16), // 0x038 / 56 -> IMM ARG DEST -> SETS DEST TO ARG
+    CALL(String),  // 0x039 / 57 -> CALL NAME -> CALLS SUBROUTINE "NAME"
     RET, // 0x03A / 58 -> RET -> RETURNS TO PARENT ROUTINE (HALTS IN ERROR, POPS ADDRESS OFF STACK)
-    HLT(u8), // 0x03B / 59 -> HLT -> HALTS PROGRAM PROCESSING (SAFELY?)
+    HLT(u16), // 0x03B / 59 -> HLT -> HALTS PROGRAM PROCESSING (SAFELY?)
 }
 
 //INSTRUCTIONS WITHOUT ARGS FOR EASIER PARSING
@@ -83,7 +83,7 @@ pub enum Operation {
 }
 
 impl Operation {
-    pub fn from_u8(num: u8) -> Operation {
+    pub fn from_u16(num: u16) -> Operation {
         match num {
             0x020 => Self::NOP,
             0x021 => Self::DEF,
@@ -124,10 +124,10 @@ impl Operation {
     }
 }
 
-pub fn parse_hex(str: &str) -> Option<u8> {
+pub fn parse_hex(str: &str) -> Option<u16> {
     if str.starts_with("0x") {
         Some(
-            u8::from_str_radix(
+            u16::from_str_radix(
                 str.strip_prefix("0x")
                     .unwrap_or_else(|| panic!("Error stripping hexidecimal prefix for {str}")),
                 16,

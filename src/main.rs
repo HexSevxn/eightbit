@@ -9,7 +9,10 @@ use compiler::*;
 fn main() {
     let args: Vec<String> = env::args().collect();
 
-    let path = args[1].clone();
+    let path = args
+        .get(1)
+        .unwrap_or_else(|| panic!("No file given to debug."))
+        .clone();
     if !path.ends_with(".e8") {
         panic!("File is not an e8 program!");
     };
