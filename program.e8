@@ -1,23 +1,30 @@
-0x021 DEF 0x021
+//[DEFINE] [NAME] [BYTES TO REPRESENT AS NAME]
+0x021 DEF 0x021 //Initial definition for DEF instruction so I don't have to use the raw bytecode
 
+//Instruction Definitions
 DEF MOV 0x022
 DEF ADD 0x023
+DEF JMP 0x030
 DEF IMM 0x038
 DEF CALL 0x039
 DEF RET 0x03A
 DEF HLT 0x03B
 
+//Non-instruction Definitions
 DEF SUCCESS 0x001
 DEF R1 0x001
 DEF R2 0x002
 
-JMP 19
+//Jump to the start of program
+JMP START
 DEF FUNC
 ADD R1 R2
 RET
 
+//Defined start of program (could be named anything)
 DEF START
 IMM 0x001 0x001
 CALL FUNC
 
+//Exit with code "0x001" or SUCCESS!!
 HLT SUCCESS
