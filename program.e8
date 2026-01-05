@@ -17,14 +17,16 @@ DEF R2 0x002
 
 //Jump to the start of program
 JMP START
+
+//Defined label "FUNC" for future use, skipped at start of program because of the earlier jump
 DEF FUNC
 ADD R1 R2
 RET
 
-//Defined start of program (could be named anything)
+//Defined label for start of program (could be named anything)
 DEF START
 IMM 0x001 0x001
-CALL FUNC
+CALL FUNC //Program counter set to index of the label "FUNC"
 
 //Exit with code "0x001" or SUCCESS!!
 HLT SUCCESS
