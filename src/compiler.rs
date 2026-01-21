@@ -1,4 +1,4 @@
-use crate::instruction::*;
+use crate::operation::parse_hex;
 use std::collections::HashMap;
 
 pub fn compile(program: String) -> Vec<Vec<u16>> {
@@ -40,17 +40,13 @@ pub fn compile(program: String) -> Vec<Vec<u16>> {
                                 name,
                                 field
                                     .iter()
-                                    .flat_map(|str| {
-                                        match parse_argument(str, &defined_names) {
-                                            Some(bytes) => bytes,
-                                            None => {
-                                                panic!(
-                                                    "Error parsing argument {str} on line {index}"
-                                                )
-                                            }
+                                    .flat_map(|str| match parse_argument(str, &defined_names) {
+                                        Some(bytes) => bytes,
+                                        None => {
+                                            panic!("Error parsing argument {str} on line {index}")
                                         }
                                     })
-                                    .collect()
+                                    .collect(),
                             );
                         }
                     }
@@ -62,8 +58,11 @@ pub fn compile(program: String) -> Vec<Vec<u16>> {
         }
     }
 
+    //Main bytecode compilation
     for (index, line) in lines.iter().enumerate() {
         let line_contents: Vec<&str> = line.split_ascii_whitespace().into_iter().collect();
+
+        //loop to ignore comments
         let mut contents = Vec::new();
         for word in line_contents {
             if word.starts_with("//") {
@@ -80,21 +79,61 @@ pub fn compile(program: String) -> Vec<Vec<u16>> {
         bytecode.push(
             contents
                 .iter()
-                .flat_map(|str| {
-                    match parse_argument(str, &defined_names) {
-                        Some(bytes) => bytes,
-                        None => {
-                            if let Some(label_index) = defined_labels.get(str.to_owned()) {
-                                return vec![*label_index];
-                            }
-                            panic!("Error on line {index} with str {str}")
+                .flat_map(|str| match parse_argument(str, &defined_names) {
+                    Some(bytes) => bytes,
+                    None => {
+                        if let Some(label_index) = defined_labels.get(str.to_owned()) {
+                            return vec![*label_index];
                         }
+                        panic!("Error on line {index} with string {str}")
                     }
                 })
-                .collect()
+                .collect(),
         );
     }
-    bytecode
+
+    let mut old_to_new_index: HashMap<u16, u16> = HashMap::new();
+    let mut new_index: u16 = 0;
+    for (old_index, bytes) in bytecode.clone().iter().enumerate() {
+        let opcode = bytes
+            .first()
+            .unwrap_or_else(|| panic!("Unkown opcode on line {old_index}"));
+
+        match opcode {
+            0x020 | 0x021 => continue,
+            _ => {
+                old_to_new_index.insert(old_index as u16, new_index);
+                new_index += 1;
+            }
+        }
+    }
+
+    let mut optimized_bytecode: Vec<Vec<u16>> = Vec::new();
+    for (index, bytes) in bytecode.clone().iter().enumerate() {
+        let opcode = bytes
+            .first()
+            .unwrap_or_else(|| panic!("Unkown opcode on line {index}"));
+        match opcode {
+            0x030 | 0x031 | 0x032 | 0x033 | 0x034 | 0x039 => {
+                let mut new_bytes = bytes.clone();
+                let new_target = old_to_new_index
+                    .get(
+                        &(new_bytes
+                            .get(1)
+                            .unwrap_or_else(|| panic!("No argument bytes found on line {index}."))
+                            + 1),
+                    )
+                    .unwrap_or(&new_bytes[1]);
+                new_bytes[1] = *new_target;
+
+                optimized_bytecode.push(new_bytes);
+            }
+            0x020 | 0x021 => continue,
+            _ => optimized_bytecode.push(bytes.clone()),
+        }
+    }
+
+    optimized_bytecode
 }
 
 pub fn parse_argument(arg: &&str, defined_names: &HashMap<String, Vec<u16>>) -> Option<Vec<u16>> {
@@ -102,341 +141,4 @@ pub fn parse_argument(arg: &&str, defined_names: &HashMap<String, Vec<u16>>) -> 
         Some(num) => Some(vec![num]),
         None => defined_names.get(*arg).cloned(),
     }
-}
-
-/*
-0x000 -> 0x00F arithematic registers
-0x010 -> 0x01F reserved registers
-0x020 -> 0x03F reserved for NO REASON
-
-0x040->0xFDF program memory
-
-0xFE0 -> 0xFEF Stack space
-*/
-
-pub fn run_raw(instructions: Vec<Vec<u16>>) {
-    let mut memory: [u16; 4096] = [0; 4096];
-    let stack_base: usize = 0xfe0;
-    let stack_pointer: usize = 0x011;
-    let program_counter: usize = 0x010;
-
-    loop {
-        if let Some(line) = instructions.get(memory[program_counter] as usize) {
-            if line.is_empty() {
-                continue;
-            }
-
-            let op = Operation::from_u16(*line.first().unwrap());
-            match op {
-                Operation::NOP => {
-                    memory[program_counter] += 1;
-                    continue;
-                }
-                Operation::DEF => {
-                    memory[program_counter] += 1;
-                    continue;
-                }
-                Operation::MOV => {
-                    let src = *line
-                        .get(1)
-                        .unwrap_or_else(|| {
-                            panic!("No SRC for MOV on line {}", memory[program_counter])
-                        });
-                    let dest = *line
-                        .get(2)
-                        .unwrap_or_else(|| {
-                            panic!("No DEST for MOV on line {}", memory[program_counter])
-                        });
-
-                    //Double check that a valid address was given
-                    if check_address(src) && check_address(dest) {
-                        memory[dest as usize] = memory[src as usize];
-                    }
-                }
-                Operation::ADD => {
-                    let src = *line
-                        .get(1)
-                        .unwrap_or_else(|| {
-                            panic!("No SRC for ADD on line {}", memory[program_counter])
-                        });
-                    let dest = *line
-                        .get(2)
-                        .unwrap_or_else(|| {
-                            panic!("No DEST for ADD on line {}", memory[program_counter])
-                        });
-
-                    //Double check that a valid address was given
-                    if check_address(src) && check_address(dest) {
-                        memory[dest as usize] += memory[src as usize];
-                    }
-                }
-                Operation::SUB => {
-                    let src = *line
-                        .get(1)
-                        .unwrap_or_else(|| {
-                            panic!("No SRC for SUB on line {}", memory[program_counter])
-                        });
-                    let dest = *line
-                        .get(2)
-                        .unwrap_or_else(|| {
-                            panic!("No DEST for SUB on line {}", memory[program_counter])
-                        });
-
-                    //Double check that a valid address was given
-                    if check_address(src) && check_address(dest) {
-                        memory[dest as usize] -= memory[src as usize];
-                    }
-                }
-                Operation::INC => {
-                    let dest = *line
-                        .get(1)
-                        .unwrap_or_else(|| {
-                            panic!("No DEST for INC on line {}", memory[program_counter])
-                        });
-
-                    if check_address(dest) {
-                        memory[dest as usize] += 1;
-                    }
-                }
-                Operation::DEC => {
-                    let dest = *line
-                        .get(1)
-                        .unwrap_or_else(|| {
-                            panic!("No DEST for DEC on line {}", memory[program_counter])
-                        });
-
-                    if check_address(dest) {
-                        memory[dest as usize] -= 1;
-                    }
-                }
-                Operation::MUL => {
-                    let src = *line
-                        .get(1)
-                        .unwrap_or_else(|| {
-                            panic!("No SRC for MUL on line {}", memory[program_counter])
-                        });
-                    let dest = *line
-                        .get(2)
-                        .unwrap_or_else(|| {
-                            panic!("No DEST for MUL on line {}", memory[program_counter])
-                        });
-
-                    //Double check that a valid address was given
-                    if check_address(src) && check_address(dest) {
-                        memory[dest as usize] *= memory[src as usize];
-                    }
-                }
-                Operation::DIV => {
-                    let src = *line
-                        .get(1)
-                        .unwrap_or_else(|| {
-                            panic!("No SRC for DIV on line {}", memory[program_counter])
-                        });
-                    let dest = *line
-                        .get(2)
-                        .unwrap_or_else(|| {
-                            panic!("No DEST for DIV on line {}", memory[program_counter])
-                        });
-
-                    //Double check that a valid address was given
-                    if check_address(src) && check_address(dest) {
-                        memory[dest as usize] /= memory[src as usize];
-                    }
-                }
-                Operation::MOD => {
-                    let src = *line
-                        .get(1)
-                        .unwrap_or_else(|| {
-                            panic!("No SRC for MOD on line {}", memory[program_counter])
-                        });
-                    let dest = *line
-                        .get(2)
-                        .unwrap_or_else(|| {
-                            panic!("No DEST for MOD on line {}", memory[program_counter])
-                        });
-
-                    //Double check that a valid address was given
-                    if check_address(src) && check_address(dest) {
-                        memory[dest as usize] %= memory[src as usize];
-                    }
-                }
-                Operation::AND => {
-                    let src = *line
-                        .get(1)
-                        .unwrap_or_else(|| {
-                            panic!("No SRC for AND on line {}", memory[program_counter])
-                        });
-                    let dest = *line
-                        .get(2)
-                        .unwrap_or_else(|| {
-                            panic!("No DEST for AND on line {}", memory[program_counter])
-                        });
-
-                    //Double check that a valid address was given
-                    if check_address(src) && check_address(dest) {
-                        memory[dest as usize] &= memory[src as usize];
-                    }
-                }
-                Operation::OR => {
-                    let src = *line
-                        .get(1)
-                        .unwrap_or_else(|| {
-                            panic!("No SRC for OR on line {}", memory[program_counter])
-                        });
-                    let dest = *line
-                        .get(2)
-                        .unwrap_or_else(|| {
-                            panic!("No DEST for OR on line {}", memory[program_counter])
-                        });
-
-                    //Double check that a valid address was given
-                    if check_address(src) && check_address(dest) {
-                        memory[dest as usize] |= memory[src as usize];
-                    }
-                }
-                Operation::XOR => {
-                    let src = *line
-                        .get(1)
-                        .unwrap_or_else(|| {
-                            panic!("No SRC for XOR on line {}", memory[program_counter])
-                        });
-                    let dest = *line
-                        .get(2)
-                        .unwrap_or_else(|| {
-                            panic!("No DEST for XOR on line {}", memory[program_counter])
-                        });
-
-                    //Double check that a valid address was given
-                    if check_address(src) && check_address(dest) {
-                        memory[dest as usize] ^= memory[src as usize];
-                    }
-                }
-                Operation::NOT => {
-                    let dest = *line
-                        .get(1)
-                        .unwrap_or_else(|| {
-                            panic!("No DEST for INC on line {}", memory[program_counter])
-                        });
-
-                    if check_address(dest) {
-                        memory[dest as usize] = !memory[dest as usize];
-                    }
-                }
-                Operation::SHL => {
-                    let src = *line
-                        .get(1)
-                        .unwrap_or_else(|| {
-                            panic!("No SRC for SHL on line {}", memory[program_counter])
-                        });
-                    let dest = *line
-                        .get(2)
-                        .unwrap_or_else(|| {
-                            panic!("No DEST for SHL on line {}", memory[program_counter])
-                        });
-
-                    //Double check that a valid address was given
-                    if check_address(src) && check_address(dest) {
-                        memory[dest as usize] <<= memory[src as usize];
-                    }
-                }
-                Operation::SHR => {
-                    let src = *line
-                        .get(1)
-                        .unwrap_or_else(|| {
-                            panic!("No SRC for SHR on line {}", memory[program_counter])
-                        });
-                    let dest = *line
-                        .get(2)
-                        .unwrap_or_else(|| {
-                            panic!("No DEST for SHR on line {}", memory[program_counter])
-                        });
-
-                    //Double check that a valid address was given
-                    if check_address(src) && check_address(dest) {
-                        memory[dest as usize] >>= memory[src as usize];
-                    }
-                }
-                Operation::JMP => {
-                    let address = *line
-                        .get(1)
-                        .unwrap_or_else(|| {
-                            panic!("No ADDR for JMP on line {}", memory[program_counter])
-                        });
-                    memory[0x010] = address;
-                }
-                Operation::JG => (),
-                Operation::JL => (),
-                Operation::JZ => (),
-                Operation::JNZ => (),
-                Operation::CMP => (),
-                Operation::PUSH => {
-                    let src = *line
-                        .get(1)
-                        .unwrap_or_else(|| {
-                            panic!("No SRC for PUSH on line {}", memory[program_counter])
-                        });
-
-                    memory[stack_pointer] += 1;
-                    memory[stack_base + (memory[stack_pointer] as usize)] = memory[src as usize];
-                }
-                Operation::POP => {
-                    let dest = *line
-                        .get(1)
-                        .unwrap_or_else(|| {
-                            panic!("No DEST for POP on line {}", memory[program_counter])
-                        });
-
-                    memory[dest as usize] = memory[stack_base + (memory[stack_pointer] as usize)];
-                    memory[stack_pointer] -= 1;
-                }
-                Operation::IMM => {
-                    let immediate = *line
-                        .get(1)
-                        .unwrap_or_else(|| {
-                            panic!("No IMM value on line {}", memory[program_counter])
-                        });
-                    let dest = *line
-                        .get(2)
-                        .unwrap_or_else(|| {
-                            panic!("No destination for IMM on line {}", memory[program_counter])
-                        });
-                    if check_address(dest) {
-                        memory[dest as usize] = immediate;
-                    }
-                }
-                Operation::CALL => {
-                    let address = *line.get(1).unwrap_or_else(|| {
-                        panic!("No ADDR for JMP on line {}", memory[program_counter]);
-                    });
-                    memory[stack_base + (memory[stack_pointer] as usize)] = memory[program_counter];
-                    memory[stack_pointer] += 1;
-                    memory[program_counter] = address;
-                }
-                // ATTEMPT TO SUBTRACT WITH OVERFLOW?
-                Operation::RET => {
-                    memory[stack_pointer] -= 1;
-                    memory[program_counter] =
-                        memory[stack_base + (memory[stack_pointer] as usize)] + 1;
-                    
-                }
-                Operation::HLT => {
-                    let exit_code = *line.get(1).unwrap_or_else(|| {
-                        panic!("No EXIT_CODE for JMP on line {}", memory[program_counter]);
-                    });
-                    println!("\nPROGRAM EXITED WITH CODE: {exit_code}\n");
-                    break;
-                }
-            }
-        } else {
-            break;
-        }
-
-        memory[program_counter] += 1;
-    }
-
-    println!("Arithmetic Registers: {:?}", memory.get(0..15));
-}
-
-fn check_address(address: u16) -> bool {
-    address & 0b0000_0001_1111 > 0 || address & 0b1111_1100_0000 > 0
 }

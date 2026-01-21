@@ -1,10 +1,12 @@
-//[DEFINE] [NAME] [BYTES TO REPRESENT AS NAME]
-0x021 DEF 0x021 //Initial definition for DEF instruction so I don't have to use the raw bytecode
+//[DEF] [NAME] [BYTES TO REPRESENT AS NAME]
+0x021 DEF 0x021 //Initial definition for DEF, defines a function label OR string representation of byte collection
 
 //Instruction Definitions
 DEF MOV 0x022
 DEF ADD 0x023
 DEF JMP 0x030
+DEF JG 0x031
+DEF JL 0x032
 DEF IMM 0x038
 DEF CALL 0x039
 DEF RET 0x03A
@@ -14,19 +16,22 @@ DEF HLT 0x03B
 DEF SUCCESS 0x001
 DEF R1 0x001
 DEF R2 0x002
+DEF R3 0x003
 
 //Jump to the start of program
 JMP START
 
 //Defined label "FUNC" for future use, skipped at start of program because of the earlier jump
-DEF FUNC
+DEF FUNC1
 ADD R1 R2
+JL FUNC1 R2 R3
 RET
 
 //Defined label for start of program (could be named anything)
 DEF START
-IMM 0x001 0x001
-CALL FUNC //Program counter set to index of the label "FUNC"
+IMM 0x001 R1
+IMM 0x020 R3
+CALL FUNC1 //Program counter set to index of the label "FUNC"
 
 //Exit with code "0x001" or SUCCESS!!
 HLT SUCCESS
